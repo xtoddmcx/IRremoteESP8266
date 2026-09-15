@@ -711,6 +711,8 @@ uint16_t IRsend::defaultBits(const decode_type_t protocol) {
       return kArgoBits;
     case BOSCH144:
       return kBosch144Bits;
+    case FURRION_CHILLCUBE:
+      return kFurrionChillCubeBits;
     case CORONA_AC:
       return kCoronaAcBits;
     case CARRIER_AC84:
@@ -1274,7 +1276,11 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
     case FUJITSU_AC:
       sendFujitsuAC(state, nbytes);
       break;
-#endif  // SEND_FUJITSU_AC
+#if SEND_FURRION_CHILLCUBE
+    case FURRION_CHILLCUBE:
+      sendFurrionChillCube(state, nbytes);
+      break;
+#endif  // SEND_FURRION_CHILLCUBE
 #if SEND_GREE
     case GREE:
       sendGree(state, nbytes);

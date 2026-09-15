@@ -186,6 +186,7 @@ bool hasACState(const decode_type_t protocol) {
     case ELECTRA_AC:
     case EUROM:
     case FUJITSU_AC:
+	case FURRION_CHILLCUBE:
     case GREE:
     case HAIER_AC:
     case HAIER_AC_YRW02:

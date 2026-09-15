@@ -164,6 +164,14 @@ typedef volatile const uint16_t atomic_const_uint16_t;
 #define SEND_RCMM              _IR_ENABLE_DEFAULT_
 #endif  // SEND_RCMM
 
+// I don't know if this is the right spot, the organization of these isn't obvious to me
+#ifndef DECODE_FURRION_CHILLCUBE
+#define DECODE_FURRION_CHILLCUBE            _IR_ENABLE_DEFAULT_
+#endif  // DECODE_FURRION_CHILLCUBE
+#ifndef SEND_FURRION_CHILLCUBE
+#define SEND_FURRION_CHILLCUBE              _IR_ENABLE_DEFAULT_
+#endif  // SEND_FURRION_CHILLCUBE
+
 #ifndef DECODE_SONY
 #define DECODE_SONY            _IR_ENABLE_DEFAULT_
 #endif  // DECODE_SONY
@@ -1164,8 +1172,9 @@ enum decode_type_t {
   YORK,
   BLUESTARHEAVY,
   EUROM,
+  FURRION_CHILLCUBE,
   // Add new entries before this one, and update it to point to the last entry.
-  kLastDecodeType = EUROM,
+  kLastDecodeType = FURRION_CHILLCUBE,
 };
 
 // Message lengths & required repeat values
@@ -1196,6 +1205,7 @@ const uint16_t kBluestarHeavyStateLength = 13;
 const uint16_t kBluestarHeavyBits = kBluestarHeavyStateLength * 8;
 const uint16_t kBosch144StateLength = 18;
 const uint16_t kBosch144Bits = kBosch144StateLength * 8;
+const uint16_t kFurrionChillCubeBits = 144;
 const uint16_t kCoolixBits = 24;
 const uint16_t kCoolix48Bits = kCoolixBits * 2;
 const uint16_t kCoolixDefaultRepeat = kSingleRepeat;
