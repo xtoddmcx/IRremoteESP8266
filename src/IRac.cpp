@@ -657,6 +657,53 @@ void IRac::argoWrem3_SetTimer(IRArgoAC_WREM3 *ac, bool on,
 }
 #endif  // SEND_ARGO
 
+#if SEND_FURRION_CHILLCUBE
+/// Send a Furrion Chill Cube A/C message with the supplied settings.
+/// @note May result in multiple messages being sent.
+/// @param[in, out] ac A Ptr to an IRFurrionChillCubeAC object to use.
+/// @param[in] on The power setting.
+/// @param[in] mode The operation mode setting.
+/// @param[in] degrees The temperature setting in degrees.
+/// @param[in] celsius Temperature units. True is Celsius, False is Fahrenheit.
+/// @param[in] fan The speed setting for the fan.
+/// @param[in] quiet Run the device in quiet/silent mode.
+/// @note -1 is Off, >= 0 is on.
+void IRac::furrionChillCube(IRFurrionChillCubeAC *ac,
+                  const bool on, const stdAc::opmode_t mode,
+                  const float degrees, const float sensorTemp,
+                  const bool celsius, const bool sleep,
+                  const stdAc::fanspeed_t fan,
+                  const bool eco) {
+  ac->begin();
+  ac->setPower(on);
+  if (!on) {
+    // after turn off AC no more commands should
+    // be accepted
+    ac->send();
+    return;
+  }
+  ac->setSleep(sleep);
+  ac->setSensorTemp(degrees, !celsius);
+  ac->setMode(ac->convertMode(mode));
+  ac->setTemp(degrees, !celsius, mode);
+  ac->setFan(ac->convertFan(fan));
+  ac->setSleep(sleep);
+  ac->setEco(eco);
+  ac->send();  // Send the state, which will also power on the unit.
+  // The following are all options/settings that create their own special
+  // messages. Often they only make sense to be sent after the unit is turned
+  // on. For instance, assuming a person wants to have the a/c on and in turbo
+  // mode. If we send the turbo message, it is ignored if the unit is off.
+  // Hence we send the special mode/setting messages after a normal message
+  // which will turn on the device.
+  // No Filter setting available.
+  // No Beep setting available.
+  // No Clock setting available.
+  // No Econo setting available.
+  // No quiet setting available.
+}
+#endif  // SEND_FURRION_CHILLCUBE
+
 #if SEND_BOSCH144
 /// Send a Bosch144 A/C message with the supplied settings.
 /// @note May result in multiple messages being sent.

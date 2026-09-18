@@ -784,7 +784,13 @@ bool IRrecv::decode(decode_results *results, irparams_t *save,
     DPRINTLN("Attempting Sharp decode");
     if (decodeSharp(results, offset)) return true;
 #endif
+#if DECODE_FURRION_CHILLCUBE
+    DPRINTLN("Attempting Furrion Chill Cube decode");
+    // Bosch is similar to Furrion, so placing Furrion first
+    if (decodeFurrionChillCube(results, offset)) return true;
+#endif  // DECODE_FURRION_CHILLCUBE
 #if DECODE_BOSCH144
+
     DPRINTLN("Attempting Bosch 144-bit decode");
     // Bosch is similar to Coolix, so it must be attempted before decodeCOOLIX.
     if (decodeBosch144(results, offset)) return true;

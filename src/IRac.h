@@ -22,6 +22,7 @@
 #include "ir_Corona.h"
 #include "ir_Daikin.h"
 #include "ir_Delonghi.h"
+#include "ir_Furrion.h"
 #include "ir_Fujitsu.h"
 #include "ir_Ecoclim.h"
 #include "ir_Electra.h"
@@ -169,6 +170,14 @@ class IRac {
   void argoWrem3_SetTimer(IRArgoAC_WREM3 *ac, bool on,
       const uint16_t currentTime, const uint16_t delayMinutes);
 #endif  // SEND_ARGO
+#if SEND_FURRION_CHILLCUBE
+  void furrionChillCube(IRFurrionChillCubeAC *ac,
+                  const bool on, const stdAc::opmode_t mode,
+                  const float degrees, const float sensorTemp,
+                  const bool celsius,  const bool sleep,
+                  const stdAc::fanspeed_t fan,
+                  const bool econo);
+#endif  // SEND_FURRION_CHILLCUBE
 #if SEND_BOSCH144
   void bosch144(IRBosch144AC *ac,
               const bool on, const stdAc::opmode_t mode, const float degrees,

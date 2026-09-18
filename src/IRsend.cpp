@@ -1276,6 +1276,7 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
     case FUJITSU_AC:
       sendFujitsuAC(state, nbytes);
       break;
+#endif  // SEND_FUJITSU_AC
 #if SEND_FURRION_CHILLCUBE
     case FURRION_CHILLCUBE:
       sendFurrionChillCube(state, nbytes);

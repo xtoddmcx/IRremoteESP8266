@@ -874,6 +874,12 @@ class IRrecv {
                       const uint16_t nbits = kBosch144Bits,
                       const bool strict = true);
 #endif  // DECODE_BOSCH144
+#if DECODE_FURRION_CHILLCUBE
+  bool decodeFurrionChillCube(decode_results *results,
+                      uint16_t offset = kStartOffset,
+                      const uint16_t nbits = kFurrionChillCubeBits,
+                      const bool strict = true);
+#endif  // DECODE_FURRION_CHILLCUBE
 #if DECODE_WOWWEE
   bool decodeWowwee(decode_results *results,
                     uint16_t offset = kStartOffset,
