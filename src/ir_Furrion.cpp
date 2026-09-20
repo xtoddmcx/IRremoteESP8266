@@ -49,7 +49,9 @@ IRFurrionChillCubeAC::IRFurrionChillCubeAC(const uint16_t pin, const bool invert
 void IRFurrionChillCubeAC::stateReset(void) {
   setRaw(kFurrionChillCubeDefaultState, kFurrionChillCubeStateLength);
   setRawFollow(kFurrionChillCubeFollowDefaultState, kFurrionChillCubeFollowStateLength);
-  setPower(true);
+  setPower(false);
+  setSwing(false);
+  setTurbo(false);
 }
 
 /// Set up hardware to be able to send a message.
@@ -91,9 +93,41 @@ void IRFurrionChillCubeAC::sendEco(const uint16_t repeat) {
 
 }
 
+void IRFurrionChillCubeAC::setDryMode(const bool dry) {
+  dryFlag = dry;
+}
+
+bool IRFurrionChillCubeAC::getDryMode(void) const {
+  return dryFlag;
+}
+
+void IRFurrionChillCubeAC::fixState(void) {
+  if (getMode() == kFurrionChillCubeFan || getMode() == kFurrionChillCubeDry ) setFollow(false);
+  if (getMode() == kFurrionChillCubeFan && !getDryMode() ) {
+    setTempRaw(kFurrionChillCubeTempNA);
+  } else {
+    if ( getTemp() == 0 ) {
+       if ( getUseFahrenheit() )
+         setTemp(kFurrionChillCubeDefaultTempF);
+       else
+         setTemp(kFurrionChillCubeDefaultTempC);
+    }
+  }
+  if ( getMode() == kFurrionChillCubeAuto || getMode() == kFurrionChillCubeDry )
+    setFan(kFurrionChillCubeFanForcedAuto);
+  else
+    if ( getFan() == kFurrionChillCubeFanForcedAuto )
+      setFan(kFurrionChillCubeFanAuto);
+  if ( getMode() != kFurrionChillCubeCool ) {
+    setTurbo(false);
+    setEco(kFurrionChillCubeEcoModeOff);
+  }
+}
+
 /// Send the current internal state as an IR message.
 /// @param[in] repeat Nr. of times the message will be repeated.
 void IRFurrionChillCubeAC::send(const uint16_t repeat) {
+  fixState();
   if (!powerFlag) {  // "Off" is a 96bit message
     _irsend.sendFurrionChillCube(kFurrionChillCubeOff, sizeof(kFurrionChillCubeOff), repeat);
   } else {
@@ -101,7 +135,7 @@ void IRFurrionChillCubeAC::send(const uint16_t repeat) {
   }
 }
 void IRFurrionChillCubeAC::sendFollow(const uint16_t repeat) {
-  // TODO: Add LED, Swing, and Turbo messages
+  fixState();
   if (!powerFlag) return; // AC is off
   _irsend.sendFurrionChillCube(getRawFollow(), kFurrionChillCubeFollowStateLength, repeat);
 }
@@ -165,31 +199,21 @@ stdAc::swingv_t IRFurrionChillCubeAC::toCommonSwing(void) const {
 }
 
 void IRFurrionChillCubeAC::setEco(const uint8_t on) {
-  ecoFlag = on;
+  if ( on != kFurrionChillCubeEcoModeOff && on != kFurrionChillCubeEcoModeOn &&
+       on != kFurrionChillCubeEcoMode50 && on != kFurrionChillCubeEcoMode75 )
+    ecoFlag = kFurrionChillCubeEcoModeOff;
+  else
+    ecoFlag = on;
 }
 
 uint8_t IRFurrionChillCubeAC::getEco(void) const {
   return ecoFlag;
 }
 
-void IRFurrionChillCubeAC::setTempRaw(const uint8_t code) {
-  _.TempS1 = _.TempS2 = code >> 2;  // save bits 3-6 in S1 and S2
-  __.FTempS1 = __.FTempS2 = code >> 2;  // save bits 3-6 in S1 and S2
-  _.TempS3 = code >> 1;             // save bit 2 in Section3
-  _.TempS3P2 = code;                  // save bit 1 in Section3
-}
-
-void IRFurrionChillCubeAC::setSensorTemp(const uint8_t temp, const bool fahrenheit) {
-  if (temp == 0) {
-    setSensorTempRaw(0);
-	setRaw(kFurrionChillCubeDefaultState, kFurrionChillCubeStateLength);
-    return;
-  }
+void IRFurrionChillCubeAC::setSensorTemp(const uint8_t temp) {
   uint8_t tempC = temp;
-  if (fahrenheit) tempC = (temp - 32.0) * 5.0 / 9.0;
+  if (getUseFahrenheit()) tempC = (temp - 32.0) * 5.0 / 9.0;
   tempC = std::round(tempC);
-  setRaw(kFurrionChillCubeFollowDefaultState, kFurrionChillCubeFollowStateLength);
-
   setSensorTempRaw(tempC);
 }
 
@@ -205,27 +229,29 @@ void IRFurrionChillCubeAC::setSensorTempRaw(const uint8_t code) {
 /// @param[in] temp Desired temperature in Degrees.
 /// @param[in] fahrenheit Use units of Fahrenheit and set that as units used.
 ///   false is Celsius (Default), true is Fahrenheit.
-void IRFurrionChillCubeAC::setTemp(const uint8_t temp, const bool fahrenheit, const stdAc::opmode_t mode) {
-  if ( mode == stdAc::opmode_t::kFan) {
-    setTempRaw(kFurrionChillCubeTempNA);
-    return;
-  } 
-  if (fahrenheit) {
+void IRFurrionChillCubeAC::setTemp(const uint8_t temp) {
+  if (getUseFahrenheit()) {
     uint8_t constrainedTemp = max(kFurrionChillCubeFahrenheitMin, temp);
     constrainedTemp = min(kFurrionChillCubeFahrenheitMax, constrainedTemp);
     setTempRaw(
       kFurrionChillCubeFahrenheitMap[constrainedTemp - kFurrionChillCubeFahrenheitMin]);
-    setUseFahrenheit(true);
   } else {
     uint8_t constrainedTemp = max(kFurrionChillCubeCelsiusMin, temp);
     constrainedTemp = min(kFurrionChillCubeCelsiusMax, constrainedTemp);
     setTempRaw(kFurrionChillCubeCelsiusMap[constrainedTemp - kFurrionChillCubeCelsiusMin]);
-    setUseFahrenheit(false);
   }
+}
+
+void IRFurrionChillCubeAC::setTempRaw(const uint8_t code) {
+  _.TempS1 = _.TempS2 = code >> 2;  // save bits 3-6 in S1 and S2
+  __.FTempS1 = __.FTempS2 = code >> 2;  // save bits 3-6 in S1 and S2
+  _.TempS3 = (code >> 1) & 1;            // save bit 2 in Section3
+  _.TempS3P2 = code & 1;                  // save bit 1 in Section3
 }
 
 uint8_t IRFurrionChillCubeAC::getTemp(void) const {
   uint8_t temp = (_.TempS1 << 2) + (_.TempS3 << 1) + _.TempS3P2;
+  if ( getMode() == kFurrionChillCubeFan && !getDryMode() ) return 0;
   if (getUseFahrenheit()) {
     for (uint8_t i = 0; i < sizeof(kFurrionChillCubeFahrenheitMap); i++) {
       if (temp == kFurrionChillCubeFahrenheitMap[i]) {
@@ -254,8 +280,9 @@ bool IRFurrionChillCubeAC::getUseFahrenheit(void) const {
 /// Set the speed of the fan.
 /// @param[in] speed The desired setting.
 void IRFurrionChillCubeAC::setFan(const uint16_t speed) {
-  _.FanS1 = _.FanS2 = speed >> 8;  // save 3 bits in S1 and S2
-  _.FanS3 = speed & 0b11111111;      // save 8 bits in Section3
+  uint16_t fanSpeed = speed; 
+  _.FanS1 = _.FanS2 = fanSpeed >> 8;  // save 3 bits in S1 and S2
+  _.FanS3 = fanSpeed & 0b11111111;      // save 8 bits in Section3
 }
 
 uint16_t IRFurrionChillCubeAC::getFan(void) const {
@@ -265,9 +292,10 @@ uint16_t IRFurrionChillCubeAC::getFan(void) const {
 /// Set the desired operation mode.
 /// @param[in] mode The desired operation mode.
 void IRFurrionChillCubeAC::setMode(const uint8_t mode) {
-  _.ModeS1 = _.ModeS2 = mode;  // save 4 bits in S1 and S2
-  __.FModeS1 = __.FModeS2 = mode >> 3;
-  if ( mode == kFurrionChillCubeFan ) setTempRaw(kFurrionChillCubeTempNA);
+  _.ModeS1 = _.ModeS2 = mode;  // save 2 bits in S1 and S2
+  __.FModeS1 = __.FModeS2 = mode;
+  if ( mode == kFurrionChillCubeDry ) setDryMode(true);
+    else setDryMode(false);
 }
 
 uint8_t IRFurrionChillCubeAC::getMode(void) const {
@@ -285,6 +313,14 @@ void IRFurrionChillCubeAC::setSleep(const bool sleep) {
 bool IRFurrionChillCubeAC::getSleep(void) const { 
   if (_.SleepS3 == 1) return true;
   return false; 
+}
+
+bool IRFurrionChillCubeAC::getFollow(void) const { 
+  return __.FPowerS1; 
+}
+
+void IRFurrionChillCubeAC::setFollow(const bool follow) {
+  __.FPowerS1 = __.FPowerS2 = follow;       
 }
 
 /// Convert a stdAc::opmode_t enum into its native mode.
@@ -307,14 +343,6 @@ uint8_t IRFurrionChillCubeAC::convertMode(const stdAc::opmode_t mode) {
 /// @param[in] speed The enum to be converted.
 /// @return The native equivalent of the enum.
 uint16_t IRFurrionChillCubeAC::convertFan(const stdAc::fanspeed_t speed) {
-	/* Figure out how to get the mode so we can set forcedauto
-  switch (mode) {
-    case stdAc::opmode_t::kAuto:
-      return kFurrionChillCubeFanForcedAuto;
-    case stdAc::opmode_t::kDry:
-      return kFurrionChillCubeFanForcedAuto;
-  }
-  */
   switch (speed) {
     case stdAc::fanspeed_t::kMin:
       return kFurrionChillCubeFanLevelOne;
@@ -334,14 +362,14 @@ uint16_t IRFurrionChillCubeAC::convertFan(const stdAc::fanspeed_t speed) {
 /// Convert a native mode into its stdAc equivalent.
 /// @param[in] mode The native setting to be converted.
 /// @return The stdAc equivalent of the native setting.
-stdAc::opmode_t IRFurrionChillCubeAC::toCommonMode(const uint8_t mode, const uint8_t temp) {
+stdAc::opmode_t IRFurrionChillCubeAC::toCommonMode(const uint8_t mode, const bool dryMode) {
   switch (mode) {
     case kFurrionChillCubeCool: return stdAc::opmode_t::kCool;
     case kFurrionChillCubeDry: 
-      if ( temp == kFurrionChillCubeTempNA )
-	    return stdAc::opmode_t::kFan;
+      if ( dryMode )
+	    return stdAc::opmode_t::kDry;
       else
-        return stdAc::opmode_t::kDry;
+        return stdAc::opmode_t::kFan;
     default: return stdAc::opmode_t::kAuto;
   }
 }
@@ -364,7 +392,7 @@ stdAc::state_t IRFurrionChillCubeAC::toCommon(void) const {
   stdAc::state_t result{};
   result.protocol = decode_type_t::FURRION_CHILLCUBE;
   result.power = getPower();
-  result.mode = toCommonMode(getMode(), getTemp());
+  result.mode = toCommonMode(getMode(), getDryMode());
   result.celsius = !getUseFahrenheit();
   result.degrees = getTemp();
   result.fanspeed = toCommonFanSpeed(getFan());

@@ -53,10 +53,18 @@ using std::memcmp;
 
 // Operating Modes                
 // Dry and Fan use the same code, differentiated by the temperature code
-const uint8_t kFurrionChillCubeCool = 0b000;
-const uint8_t kFurrionChillCubeDry =  0b010;
-const uint8_t kFurrionChillCubeAuto = 0b100;
-const uint8_t kFurrionChillCubeFan =  0b010;
+const uint8_t kFurrionChillCubeCool = 0b00;
+const uint8_t kFurrionChillCubeDry =  0b01;
+const uint8_t kFurrionChillCubeAuto = 0b10;
+const uint8_t kFurrionChillCubeFan =  0b01;
+
+const uint8_t kFurrionChillCubeEcoModeOff =  0;
+const uint8_t kFurrionChillCubeEcoModeOn = 1;
+const uint8_t kFurrionChillCubeEcoMode50 = 2;
+const uint8_t kFurrionChillCubeEcoMode75 =  3;
+
+const uint8_t kFurrionChillCubeDefaultTempF = 75;
+const uint8_t kFurrionChillCubeDefaultTempC = 24;
 
 // Fan is always in forced auto in auto and dry modes.
 // Fan Control - Goes in section 1 and 2 
@@ -92,6 +100,7 @@ const uint8_t kFurrionChillCubeCelsiusMap[] = {
 const uint8_t kFurrionChillCubeFahrenheitMin = 60;
 const uint8_t kFurrionChillCubeFahrenheitMax = 86;
 const uint8_t kFurrionChillCubeFahrenheitMap[] = {
+    // The remotes internal F to C conversion does not match round((F - 32.0) * 5.0 / 9.0), nor roundup or rounddown
     0b000001,  // 60
     0b000011,  // 61
     0b000000,  // 62
@@ -121,7 +130,7 @@ const uint8_t kFurrionChillCubeFahrenheitMap[] = {
     0b101100,  // 86
 };
 
-const uint8_t kFurrionChillCubeTempNA = 0xE4; // Used in fan mode, also differentiates between dry and fan
+const uint8_t kFurrionChillCubeTempNA = 0b11100100; // 0xE4 Used in fan mode where there is no temperature, also differentiates between dry and fan
 
 // Fixed State Messages
 const uint8_t kFurrionChillCubeOff[] = { 0xB2, 0x4D, 0x7B, 0x84, 0xE0, 0x1F, 0xB2, 0x4D, 0x7B, 0x84, 0xE0, 0x1F };
@@ -136,50 +145,51 @@ const uint8_t kFurrionChillCubeEcoOn[] = { 0xB9, 0x46, 0xF5, 0x0A, 0x24, 0xDB, 0
 const uint8_t kFurrionChillCube50power[] = { 0xB5, 0x4A, 0xF5, 0x0A, 0xBE, 0x41, 0xB5, 0x4A, 0xF5, 0x0A, 0xBE, 0x41 };
 const uint8_t kFurrionChillCube75power[] = { 0xB5, 0x4A, 0xF5, 0x0A, 0xBD, 0x42, 0xB5, 0x4A, 0xF5, 0x0A, 0xBD, 0x42 };
 
-// On, 25C, Mode: Auto
+// On, 77F, Mode: Auto
 const uint8_t kFurrionChillCubeDefaultState[kFurrionChillCubeStateLength] = {
   0xB2, 0x4D, 0x1F, 0xE0, 0xC8, 0x37,
   0xB2, 0x4D, 0x1F, 0xE0, 0xC8, 0x37,
-  0xD5, 0x65, 0x00, 0x00, 0x00, 0x3A};
+  0xD5, 0x65, 0x00, 0x01, 0x00, 0x3B};
 
 // On, 25C, 25C, Auto, Auto
 const uint8_t kFurrionChillCubeFollowDefaultState[kFurrionChillCubeFollowStateLength] = {
   0xBA, 0x45, 0x5A, 0xA5, 0xCA, 0x35,
   0xBA, 0x45, 0x5A, 0xA5, 0xCA, 0x35};
 
+
 union FurrionChillCubeProtocol {
   uint8_t raw[kFurrionChillCubeStateLength];  ///< The state in IR code form.
   struct {
     uint8_t               :8;   // Fixed value 0b10110010 / 0xB2    ############
     uint8_t InnvertS1_1   :8;   // Invert byte 1          / 0x4D    #
-    uint8_t FanS1         :3;   // Fan Speed                        #
     uint8_t               :5;   // Timer off                        # Section 1
+    uint8_t FanS1         :3;   // Fan Speed                        #
     uint8_t InnvertS1_3   :8;   // Invert byte 3                    # =
+	uint8_t               :2;   // Timer                            #
+	uint8_t ModeS1        :2;   // Operating Mode                   #
     uint8_t TempS1        :4;   // Temperature Setpoint             # Section 2
-	uint8_t ModeS1        :3;   // Operating Mode                   #
-	uint8_t               :1;   // Timer                            #
     uint8_t InnvertS1_5   :8;   // Invert byte 5 or Timer On        # ##########
 
     uint8_t               :8;   // Fixed value 0b10110010 / 0xB2    ############
     uint8_t InnvertS2_1   :8;   // Invert byte 1          / 0x4D    #
-    uint8_t FanS2         :3;   // Fan Speed                        #
     uint8_t               :5;   // Timer off                        # Section 1
+    uint8_t FanS2         :3;   // Fan Speed                        #
     uint8_t InnvertS2_3   :8;   // Invert byte 3                    # =
+	uint8_t               :2;   // Timer                            #
+	uint8_t ModeS2        :2;   // Operating Mode                   #
     uint8_t TempS2        :4;   // Temperature Setpoint             # Section 2
-	uint8_t ModeS2        :3;   // Operating Mode                   #
-	uint8_t               :1;   // Timer                            #
     uint8_t InnvertS2_5   :8;   // Invert byte 5 or Timer On        # ##########
 
     uint8_t               :8;   // Fixed value 0b11010101 / 0xD5    ###########
     uint8_t FanS3         :8;   // Fan speed                        #
-    uint8_t SleepS3       :1;   // Sleep Mode                       #
-    uint8_t               :1;   // Undeciphered, 0b0                #
-    uint8_t TempS3        :1;   // 1F temp modifier, unused for C   #
     uint8_t               :5;   // Undeciphered, 0b00000            #
-    uint8_t               :3;   // Undeciphered, 0b000              #
-    uint8_t TempS3P2      :1;   // b1 for 61,62F,16C else b0        #
-	uint8_t               :3;   // Undeciphered, 0b000              #
+    uint8_t TempS3        :1;   // 1F temp modifier, unused for C   #
+    uint8_t               :1;   // Undeciphered, 0b0                #
+    uint8_t SleepS3       :1;   // Sleep Mode                       #
 	uint8_t UseFahrenheit :1;   // b0001 for F, b0000 for C         #
+	uint8_t               :3;   // Undeciphered, 0b000              #
+    uint8_t TempS3P2      :1;   // b1 for 61,62F,16C else b0        #
+    uint8_t               :3;   // Undeciphered, 0b000              #
     uint8_t               :8;   // Undeciphered                     #
     uint8_t ChecksumS3    :8;   // Checksum from byte 13-17         ###########
   };
@@ -190,20 +200,24 @@ union FurrionChillCubeFollowProtocol {
   struct {
     uint8_t               :8;   // Constant 0xBA                    ############
     uint8_t FInnvertS1_1  :8;   // Invert byte 1                    #
-    uint8_t FPowerS1      :2;   // Follow mode on/off               #
     uint8_t FSensTempS1   :6;   // Sensor temp                      # Section 1
+    uint8_t FPowerS1      :1;   // Follow mode on/off               #
+	uint8_t               :1;   // Undeciphered                     #
     uint8_t FInnvertS1_3  :8;   // Invert byte 3                    # =
+	uint8_t               :2;   // Undeciphered                     #
+	uint8_t FModeS1       :2;   // Mode, Auto or Cool               #
     uint8_t FTempS1       :4;   // Temperature setpoint             # Section 2
-	uint8_t FModeS1       :4;   // Mode, Auto or Cool               #
     uint8_t FInnvertS1_5  :8;   // Invert byte 5                    # ##########
 
     uint8_t               :8;   // Constant 0xBA                    ############
     uint8_t FInnvertS2_1  :8;   // Invert byte 1                    #
-    uint8_t FPowerS2      :2;   // Follow mode on/off               #
     uint8_t FSensTempS2   :6;   // Sensor temp                      # Section 1
+    uint8_t FPowerS2      :1;   // Follow mode on/off               #
+	uint8_t               :1;   // Undeciphered                     #
     uint8_t FInnvertS2_3  :8;   // Invert byte 3                    # =
+	uint8_t               :2;   // Undeciphered                     #
+	uint8_t FModeS2       :2;   // Mode, Auto or Cool               #
     uint8_t FTempS2       :4;   // Temperature setpoint             # Section 2
-	uint8_t FModeS2       :4;   // Mode, Auto or Cool               #
     uint8_t FInnvertS2_5  :8;   // Invert byte 5                    # ##########
   };
 };
@@ -228,8 +242,8 @@ class IRFurrionChillCubeAC {
   void begin();
   void setPower(const bool state);
   bool getPower(void) const;
-  void setTemp(const uint8_t temp, const bool fahrenheit, const stdAc::opmode_t mode);
-  void setSensorTemp(const uint8_t temp, const bool fahrenheit);
+  void setTemp(const uint8_t temp);
+  void setSensorTemp(const uint8_t temp);
   void setSensorTempRaw(const uint8_t code);
   uint8_t getSensorTempRaw(void) const;
   uint8_t getTemp(void) const;
@@ -254,7 +268,7 @@ class IRFurrionChillCubeAC {
               const uint16_t length = kFurrionChillCubeFollowStateLength);
   static uint8_t convertMode(const stdAc::opmode_t mode);
   static uint16_t convertFan(const stdAc::fanspeed_t speed);
-  static stdAc::opmode_t toCommonMode(const uint8_t mode, const uint8_t temp);
+  static stdAc::opmode_t toCommonMode(const uint8_t mode, const bool dryMode);
   static stdAc::fanspeed_t toCommonFanSpeed(const uint16_t speed);
   stdAc::state_t toCommon(void) const;
   String toString(void) const;
@@ -264,6 +278,11 @@ class IRFurrionChillCubeAC {
   void sendEco(const uint16_t repeat);
   void setSleep(const bool sleep);
   bool getSleep(void) const;
+  void setFollow(const bool follow);
+  bool getFollow(void) const;
+  void setDryMode(const bool dry);
+  bool getDryMode(void) const;
+  void fixState(void);
 #ifndef UNIT_TEST
 
  private:
@@ -279,6 +298,7 @@ class IRFurrionChillCubeAC {
   bool powerFlag = false;
   bool turboFlag = false;
   bool swingFlag = false;
+  bool dryFlag = false;
   uint8_t ecoFlag = 0;
 
   void setInvertBytes();

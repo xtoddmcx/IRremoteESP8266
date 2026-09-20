@@ -683,9 +683,9 @@ void IRac::furrionChillCube(IRFurrionChillCubeAC *ac,
     return;
   }
   ac->setSleep(sleep);
-  ac->setSensorTemp(degrees, !celsius);
+  ac->setSensorTemp(degrees);
   ac->setMode(ac->convertMode(mode));
-  ac->setTemp(degrees, !celsius, mode);
+  ac->setTemp(degrees);
   ac->setFan(ac->convertFan(fan));
   ac->setSleep(sleep);
   ac->setEco(eco);
