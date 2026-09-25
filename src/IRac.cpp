@@ -684,7 +684,7 @@ void IRac::furrionChillCube(IRFurrionChillCubeAC *ac,
   }
   ac->setSleep(sleep);
   ac->setSensorTemp(degrees);
-  ac->setMode(ac->convertMode(mode));
+  ac->setMode(ac->convertMode(mode), mode==stdAc::opmode_t::kDry);
   ac->setTemp(degrees);
   ac->setFan(ac->convertFan(fan));
   ac->setSleep(sleep);

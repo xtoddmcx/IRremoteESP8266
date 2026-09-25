@@ -291,10 +291,10 @@ uint16_t IRFurrionChillCubeAC::getFan(void) const {
 
 /// Set the desired operation mode.
 /// @param[in] mode The desired operation mode.
-void IRFurrionChillCubeAC::setMode(const uint8_t mode) {
+void IRFurrionChillCubeAC::setMode(const uint8_t mode, const bool dryMode) {
   _.ModeS1 = _.ModeS2 = mode;  // save 2 bits in S1 and S2
   __.FModeS1 = __.FModeS2 = mode;
-  if ( mode == kFurrionChillCubeDry ) setDryMode(true);
+  if ( dryMode ) setDryMode(true);
     else setDryMode(false);
 }
 

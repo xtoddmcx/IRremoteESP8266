@@ -251,7 +251,7 @@ class IRFurrionChillCubeAC {
   bool getUseFahrenheit(void) const;
   void setFan(const uint16_t speed);
   uint16_t getFan(void) const;
-  void setMode(const uint8_t mode);
+  void setMode(const uint8_t mode, const bool dryMode);
   uint8_t getMode(void) const;
   void setTurbo(const bool on);
   bool getTurbo(void) const;
