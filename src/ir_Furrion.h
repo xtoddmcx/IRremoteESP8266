@@ -186,7 +186,7 @@ union FurrionChillCubeProtocol {
     uint8_t TempS3        :1;   // 1F temp modifier, unused for C   #
     uint8_t               :1;   // Undeciphered, 0b0                #
     uint8_t SleepS3       :1;   // Sleep Mode                       #
-	uint8_t UseFahrenheit :1;   // b0001 for F, b0000 for C         #
+	uint8_t UseFahrenheit :1;   // b1 for F, b0 for C               #
 	uint8_t               :3;   // Undeciphered, 0b000              #
     uint8_t TempS3P2      :1;   // b1 for 61,62F,16C else b0        #
     uint8_t               :3;   // Undeciphered, 0b000              #
